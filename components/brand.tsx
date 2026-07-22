@@ -1,14 +1,2 @@
 import Link from "next/link";
-
-export function Brand({ compact = false }: { compact?: boolean }) {
-  return (
-    <Link className="brand" href={compact ? "/dashboard" : "/"} aria-label="AfriGate AI home">
-      <span className="brand-mark" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </span>
-      <span className="brand-name">AfriGate<span>AI</span></span>
-    </Link>
-  );
-}
+export function Brand({ href = "/" }: { href?: string }) { return <Link className="brand" href={href}><span className="brand-mark"><i /><i /><i /></span><span>AfriGate <b>AI</b></span></Link>; }

@@ -1,20 +1,3 @@
 "use client";
-
-import { useState } from "react";
-import { Sidebar } from "@/components/sidebar";
-import { Topbar } from "@/components/topbar";
-
-export function WorkspaceShell({ children }: { children: React.ReactNode }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  return (
-    <div className={menuOpen ? "workspace menu-open" : "workspace"}>
-      <div className="mobile-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />
-      <div className="sidebar-wrapper" onClick={() => setMenuOpen(false)}><Sidebar /></div>
-      <div className="workspace-main">
-        <Topbar onMenu={() => setMenuOpen((value) => !value)} />
-        <main className="workspace-content">{children}</main>
-      </div>
-    </div>
-  );
-}
+import { useState } from "react"; import { Sidebar } from "@/components/sidebar"; import { Topbar } from "@/components/topbar";
+export function WorkspaceShell({ children, organization, name, role }: { children: React.ReactNode; organization: string; name: string; role: string }) { const [menuOpen, setMenuOpen] = useState(false); return <div className={menuOpen ? "workspace menu-open" : "workspace"}><button className="mobile-backdrop" onClick={() => setMenuOpen(false)} aria-label="Close navigation" /><div className="sidebar-wrap" onClick={() => setMenuOpen(false)}><Sidebar organization={organization} /></div><div className="workspace-main"><Topbar name={name} role={role} onMenu={() => setMenuOpen((value) => !value)} /><main className="workspace-content">{children}</main></div></div>; }

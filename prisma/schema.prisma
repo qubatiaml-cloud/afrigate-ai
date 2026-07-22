@@ -3,171 +3,261 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
-}
-
-enum Plan {
-  STARTER
-  GROWTH
-  ENTERPRISE
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
   OWNER
   ADMIN
-  OPERATOR
+  MEMBER
   ANALYST
   VIEWER
 }
 
-enum ShipmentStatus {
-  BOOKING
-  IN_TRANSIT
-  CUSTOMS
-  DELAYED
-  DELIVERED
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
   CANCELLED
 }
 
-enum TransportMode {
-  SEA
-  AIR
-  ROAD
-  RAIL
-}
-
-enum DocumentStatus {
+enum StudyStatus {
   DRAFT
-  REVIEW
+  IN_REVIEW
   APPROVED
-  EXPIRED
   REJECTED
 }
 
-enum InsightSeverity {
-  INFO
-  OPPORTUNITY
-  WARNING
-  CRITICAL
+enum FinancialType {
+  BUDGET
+  REVENUE
+  EXPENSE
+  INVESTMENT
 }
 
-model Workspace {
-  id        String     @id @default(cuid())
-  name      String
-  slug      String     @unique
-  plan      Plan       @default(GROWTH)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  users     User[]
-  customers Customer[]
-  shipments Shipment[]
-  documents Document[]
-  insights  Insight[]
+enum ClientStage {
+  LEAD
+  QUALIFIED
+  PROPOSAL
+  ACTIVE
+  INACTIVE
 }
 
-model User {
-  id          String    @id @default(cuid())
-  name        String
-  email       String    @unique
-  role        UserRole  @default(OPERATOR)
-  avatarUrl   String?
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([workspaceId])
+enum SupplierStatus {
+  PROSPECT
+  APPROVED
+  ACTIVE
+  SUSPENDED
 }
 
-model Customer {
-  id          String     @id @default(cuid())
-  name        String
-  code        String
-  country     String
-  contactName String?
-  contactEmail String?
-  healthScore Int        @default(80)
-  workspaceId String
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  shipments   Shipment[]
-  documents   Document[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  @@unique([workspaceId, code])
-  @@index([workspaceId])
+enum InvestorStatus {
+  PROSPECT
+  ENGAGED
+  DUE_DILIGENCE
+  COMMITTED
+  INACTIVE
 }
 
-model Shipment {
-  id            String         @id @default(cuid())
-  reference     String         @unique
-  cargo         String
-  origin        String
-  destination   String
-  status        ShipmentStatus @default(BOOKING)
-  mode          TransportMode
-  progress      Int            @default(0)
-  value         Float
-  co2Kg         Float          @default(0)
-  departureDate DateTime
-  eta           DateTime
-  customerId    String
-  customer      Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  workspaceId   String
-  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  events        ShipmentEvent[]
-  documents     Document[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-
-  @@index([workspaceId, status])
-  @@index([customerId])
+model Organization {
+  id               String             @id @default(uuid()) @db.Uuid
+  name             String
+  slug             String             @unique
+  country          String             @default("Kenya")
+  currency         String             @default("USD") @db.VarChar(3)
+  fiscalYearStart  Int                @default(1)
+  createdAt        DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime           @updatedAt @db.Timestamptz(6)
+  profiles         Profile[]
+  projects         Project[]
+  feasibility      FeasibilityStudy[]
+  financialRecords FinancialRecord[]
+  clients          Client[]
+  suppliers        Supplier[]
+  investors        Investor[]
+  documents        Document[]
+  auditLogs        AuditLog[]
 }
 
-model ShipmentEvent {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  location    String
-  occurredAt  DateTime
-  shipmentId  String
-  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
+model Profile {
+  id             String        @id @db.Uuid
+  email          String        @unique
+  fullName       String?
+  role           UserRole      @default(MEMBER)
+  organizationId String?       @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(6)
 
-  @@index([shipmentId, occurredAt])
+  @@index([organizationId])
+}
+
+model Project {
+  id                 String             @id @default(uuid()) @db.Uuid
+  code               String
+  name               String
+  description        String?
+  sector             String
+  location           String
+  status             ProjectStatus      @default(PLANNING)
+  budget             Decimal            @default(0) @db.Decimal(18, 2)
+  startDate          DateTime?           @db.Date
+  endDate            DateTime?           @db.Date
+  clientId           String?             @db.Uuid
+  client             Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  organizationId     String              @db.Uuid
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy          String              @db.Uuid
+  feasibilityStudies FeasibilityStudy[]
+  financialRecords   FinancialRecord[]
+  documents          Document[]
+  createdAt          DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(6)
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
+  @@index([clientId])
+}
+
+model FeasibilityStudy {
+  id               String       @id @default(uuid()) @db.Uuid
+  title            String
+  projectId        String       @db.Uuid
+  project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status           StudyStatus  @default(DRAFT)
+  executiveSummary String
+  marketScore      Int?
+  technicalScore   Int?
+  financialScore   Int?
+  riskScore        Int?
+  overallScore     Int?
+  recommendation   String?
+  organizationId   String       @db.Uuid
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy        String       @db.Uuid
+  createdAt        DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, status])
+  @@index([projectId])
+}
+
+model FinancialRecord {
+  id              String        @id @default(uuid()) @db.Uuid
+  type            FinancialType
+  category        String
+  description     String
+  amount          Decimal       @db.Decimal(18, 2)
+  currency        String        @db.VarChar(3)
+  transactionDate DateTime      @db.Date
+  projectId       String?       @db.Uuid
+  project         Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  organizationId  String        @db.Uuid
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       String        @db.Uuid
+  createdAt       DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, type])
+  @@index([projectId])
+  @@index([transactionDate])
+}
+
+model Client {
+  id             String       @id @default(uuid()) @db.Uuid
+  name           String
+  contactName    String
+  email          String
+  phone          String?
+  country        String
+  stage          ClientStage  @default(LEAD)
+  estimatedValue Decimal      @default(0) @db.Decimal(18, 2)
+  notes          String?
+  organizationId String       @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projects       Project[]
+  createdBy      String       @db.Uuid
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, stage])
+  @@index([email])
+}
+
+model Supplier {
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String
+  category       String
+  contactName    String
+  email          String
+  phone          String?
+  country        String
+  status         SupplierStatus @default(PROSPECT)
+  rating         Int            @default(0)
+  notes          String?
+  organizationId String         @db.Uuid
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      String         @db.Uuid
+  createdAt      DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, status])
+}
+
+model Investor {
+  id                String         @id @default(uuid()) @db.Uuid
+  name              String
+  organizationName  String?
+  email             String
+  phone             String?
+  country           String
+  status            InvestorStatus @default(PROSPECT)
+  investmentRange   String
+  focusAreas        String
+  lastContactedAt   DateTime?       @db.Date
+  notes             String?
+  organizationId    String         @db.Uuid
+  organization      Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy         String         @db.Uuid
+  createdAt         DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime       @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, status])
 }
 
 model Document {
-  id          String         @id @default(cuid())
-  name        String
-  type        String
-  status      DocumentStatus @default(DRAFT)
-  expiresAt   DateTime?
-  storageKey  String?
-  customerId  String?
-  customer    Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  shipmentId  String?
-  shipment    Shipment?      @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
-  workspaceId String
-  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id             String       @id @default(uuid()) @db.Uuid
+  title          String
+  category       String
+  storageBucket  String
+  storagePath    String       @unique
+  mimeType       String
+  sizeBytes      Int
+  projectId      String?      @db.Uuid
+  project        Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  organizationId String       @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy     String       @db.Uuid
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
 
-  @@index([workspaceId, status])
+  @@index([organizationId, category])
+  @@index([projectId])
 }
 
-model Insight {
-  id          String          @id @default(cuid())
-  title       String
-  body        String
-  action      String?
-  severity    InsightSeverity @default(INFO)
-  confidence  Int             @default(80)
-  resolvedAt  DateTime?
-  workspaceId String
-  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdAt   DateTime        @default(now())
+model AuditLog {
+  id             String       @id @default(uuid()) @db.Uuid
+  action         String
+  resource       String
+  resourceId     String       @db.Uuid
+  actorId        String       @db.Uuid
+  metadata       Json?
+  organizationId String       @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
 
-  @@index([workspaceId, resolvedAt])
+  @@index([organizationId, createdAt])
+  @@index([resource, resourceId])
 }

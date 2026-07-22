@@ -1,74 +1,125 @@
 # AfriGate AI
 
-AfriGate AI is an AI-native trade and logistics operations platform built for African supply chains. The application combines shipment visibility, customer operations, trade-document control, analytics, and explainable operational recommendations in one responsive workspace.
+AfriGate AI is a multi-tenant project and investment management application for teams developing African ventures. It combines project execution, structured feasibility assessment, financial records, stakeholders and governed documents in one authenticated workspace.
 
-## What is included
+This repository contains working database-backed screens and APIs for the implemented project and investment lifecycle.
 
-- Public product landing page with a direct demo entry point
-- Responsive operations dashboard with KPIs, shipment volume, trade corridors, and activity
-- Shipment control tower with status, progress, mode, ETA, and customer context
-- Customer portfolio, document library, AI insight queue, analytics, and settings modules
-- Multi-tenant Prisma schema for workspaces, users, customers, shipments, events, documents, and insights
-- Idempotent demo seed and local SQLite development database
-- Health and shipment JSON endpoints
-- Strict TypeScript configuration, standalone production build, and GitHub Actions validation
+## Implemented modules
+
+- **Dashboard** — live organization metrics and recent project, feasibility and financial activity.
+- **Project Management** — create, search, update and delete projects; track budgets, dates, locations, sectors, clients and lifecycle status.
+- **AI Feasibility Studies** — CRUD studies linked to projects, with market, technical, financial and risk scoring plus a server-side weighted analysis and recommendation workflow.
+- **Financial Module** — CRUD budgets, revenue, expenses and investments, optionally linked to projects.
+- **Document Center** — upload, list, edit metadata, download through short-lived signed URLs and delete private project or organization documents in Supabase Storage.
+- **CRM** — CRUD client pipeline records and project associations.
+- **Supplier Management** — CRUD supplier records, approval status and ratings.
+- **Investor Management** — CRUD investor pipeline records, investment ranges, focus areas and contact history.
+- **Settings** — update organization details and manage member roles while preventing removal of the final owner.
+
+## Security model
+
+- Supabase Auth email/password login, logout, PKCE callback, cookie-backed server sessions and middleware session refresh.
+- Every workspace route is protected; unauthenticated users are redirected to `/login`.
+- Server authorization verifies the Supabase user with `auth.getUser()` and resolves the matching Prisma profile.
+- Every application query and mutation is scoped to the authenticated user's `organizationId`.
+- Strict Zod request schemas reject unknown fields and invalid input.
+- Mutations require same-origin requests and enforce role permissions before database or storage access.
+- Private Storage objects use organization-prefixed paths, RLS policies and 60-second signed download URLs.
+- Database changes are recorded in organization-scoped audit logs.
+- Baseline PostgreSQL migration enables RLS on tenant tables and provisions the private `project-documents` bucket and Storage policies.
+
+Role behavior:
+
+| Role | Access |
+| --- | --- |
+| `OWNER` | All modules, organization settings and roles |
+| `ADMIN` | All modules, organization settings and roles |
+| `MEMBER` | Read all modules; manage operational records and documents |
+| `ANALYST` | Read all modules; manage feasibility and financial records |
+| `VIEWER` | Read-only access |
 
 ## Technology
 
-- Next.js App Router
-- React and TypeScript
-- Prisma ORM with SQLite for local development
-- Lucide icons and a custom responsive CSS design system
+- Next.js 15 App Router, React 19 and TypeScript
+- Supabase Auth, PostgreSQL and private Storage
+- Prisma ORM 6 with PostgreSQL migrations
+- Zod validation
 
-## Local setup
+## Supabase setup
 
-Requirements: Node.js 20.9 or newer and npm.
+1. Create a Supabase project.
+2. Copy `.env.example` to `.env.local` and replace every placeholder with the project's values.
+3. In Supabase Database Settings, use the transaction pooler on port `6543` for `DATABASE_URL` and the session pooler/direct connection on port `5432` for `DIRECT_URL`.
+4. Create a dedicated `prisma` database role with `bypassrls`, as recommended for Prisma's server connection. Do not expose that role or password to the browser. The public Supabase publishable key is the only key used client-side.
+5. Apply the committed migration. It creates the application schema, auth profile trigger, tenant RLS policies, private Storage bucket and object policies:
+
+```bash
+npm run db:migrate
+```
+
+6. In Supabase Auth URL Configuration, set the Site URL to the deployed application URL and add `http://localhost:3000/auth/callback` for local development. Create users through Supabase Auth. On first login, the user completes organization onboarding and becomes its owner.
+
+The default Storage bucket is `project-documents`. If `SUPABASE_STORAGE_BUCKET` is changed, provision an equivalent private bucket and update the Storage policies in the migration.
+
+## Environment variables
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL pooled application URL used by Prisma |
+| `DIRECT_URL` | PostgreSQL direct/session URL used by Prisma migrations |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe Supabase publishable key |
+| `SUPABASE_STORAGE_BUCKET` | Private document bucket; defaults to `project-documents` |
+| `NEXT_PUBLIC_APP_URL` | Application origin |
+
+No `.env` file is committed. Keep production values in the hosting platform's encrypted environment configuration.
+
+## Local development
+
+Node.js 20.9 or newer is required.
 
 ```bash
 npm install
-cp .env.example .env
-npm run db:setup
+npm run prisma:generate
+npm run db:migrate
 npm run dev
 ```
 
-On Windows PowerShell, copy the environment file with:
+Open `http://localhost:3000` and sign in with a Supabase Auth user.
 
-```powershell
-Copy-Item .env.example .env
-```
-
-Open [http://localhost:3000](http://localhost:3000). The operations workspace is available at `/dashboard`.
-
-## Validation
+## Validation and production build
 
 ```bash
 npm run prisma:generate
 npm run typecheck
 npm run build
+npm start
 ```
 
-The same validation runs automatically on pushes and pull requests through `.github/workflows/ci.yml`.
+The GitHub Actions workflow runs install, Prisma generation, strict TypeScript checking and the production build on pushes to `main` and on pull requests.
 
-## API
+## API surface
 
-- `GET /api/health` — service health response
-- `GET /api/shipments` — demo shipment collection
-- `POST /api/shipments` — validates and returns a newly booked shipment payload
+All routes except health require an authenticated session. Resource endpoints derive tenant and actor identity from the session; clients cannot submit either value.
 
-Required POST fields are `customer`, `cargo`, `origin`, `destination`, and `mode`.
+| Route | Methods | Purpose |
+| --- | --- | --- |
+| `/api/projects` | `GET`, `POST` | Project collection |
+| `/api/projects/:id` | `PATCH`, `DELETE` | Project record |
+| `/api/feasibility` | `GET`, `POST` | Feasibility study collection |
+| `/api/feasibility/:id` | `PATCH`, `DELETE` | Feasibility study record |
+| `/api/feasibility/:id/analyze` | `POST` | Calculate overall score and recommendation |
+| `/api/financial` | `GET`, `POST` | Financial record collection |
+| `/api/financial/:id` | `PATCH`, `DELETE` | Financial record |
+| `/api/crm`, `/api/suppliers`, `/api/investors` | `GET`, `POST` | Stakeholder collections |
+| `/api/{crm,suppliers,investors}/:id` | `PATCH`, `DELETE` | Stakeholder records |
+| `/api/documents` | `GET`, `POST` | Document list and upload |
+| `/api/documents/:id` | `PATCH`, `DELETE` | Document metadata and deletion |
+| `/api/documents/:id/download` | `GET` | Short-lived private download redirect |
+| `/api/settings` | `GET`, `PATCH` | Organization settings |
+| `/api/settings/members/:id` | `PATCH` | Member role management |
+| `/api/health` | `GET` | Public process health check |
 
-## Data and production deployment
+## Deployment
 
-SQLite keeps local onboarding simple. For production, change the Prisma datasource provider and `DATABASE_URL` to a managed PostgreSQL database, run a migration, then deploy the standalone Next.js build. Authentication, object storage, carrier integrations, and background AI processing can be connected behind the existing workspace and domain boundaries without restructuring the UI.
-
-## Useful commands
-
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start the development server |
-| `npm run typecheck` | Run strict TypeScript checks |
-| `npm run build` | Create a production build |
-| `npm run prisma:generate` | Generate the Prisma client |
-| `npm run db:push` | Apply the schema to the local database |
-| `npm run db:seed` | Load the idempotent demo dataset |
-| `npm run db:setup` | Generate, create, and seed in one command |
+Set the environment variables in the target platform, run `npm run db:migrate` as a release step, then build with `npm run build` and serve with `npm start`. Deploy migrations using `DIRECT_URL`; runtime traffic uses `DATABASE_URL`.

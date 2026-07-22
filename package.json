@@ -2,35 +2,37 @@
   "name": "afrigate-ai",
   "version": "1.0.0",
   "private": true,
-  "description": "AI-powered African trade and logistics operations platform",
+  "description": "Secure AI-assisted project and investment management platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "node scripts/prepare-standalone.mjs",
-    "start": "node .next/standalone/server.js",
+    "start": "next start",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:setup": "node scripts/ensure-local-db.mjs && npm run prisma:generate && npm run db:push && npm run db:seed"
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev"
   },
   "dependencies": {
-    "@prisma/client": "6.19.0",
+    "@prisma/client": "^6.19.3",
+    "@supabase/ssr": "^0.10.0",
+    "@supabase/supabase-js": "^2.57.4",
     "lucide-react": "^0.468.0",
-    "next": "15.5.9",
-    "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "next": "^15.5.21",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.3",
     "@types/react-dom": "^19.0.2",
-    "prisma": "6.19.0",
+    "prisma": "^6.19.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+  "overrides": {
+    "postcss": "8.5.22",
+    "sharp": "0.35.3"
   },
   "engines": {
     "node": ">=20.9.0"

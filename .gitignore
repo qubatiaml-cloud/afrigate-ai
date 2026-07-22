@@ -15,10 +15,7 @@
 .env*.local
 !.env.example
 
-# Prisma / SQLite
-*.db
-*.db-journal
-prisma/dev.db*
+# Prisma generated artifacts
 
 # logs and tooling
 npm-debug.log*

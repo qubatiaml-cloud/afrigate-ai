@@ -1,26 +1,3 @@
 "use client";
-
-import { Bell, Command, Menu, Search } from "lucide-react";
-
-export function Topbar({ onMenu }: { onMenu?: () => void }) {
-  return (
-    <header className="topbar">
-      <button className="icon-button menu-button" type="button" aria-label="Open menu" onClick={onMenu}>
-        <Menu size={20} />
-      </button>
-      <label className="global-search">
-        <Search size={17} />
-        <input aria-label="Search AfriGate" placeholder="Search shipments, customers, documents..." />
-        <span><Command size={12} /> K</span>
-      </label>
-      <div className="topbar-actions">
-        <span className="live-indicator"><i /> All systems operational</span>
-        <button className="icon-button notification-button" type="button" aria-label="Notifications">
-          <Bell size={19} />
-          <span />
-        </button>
-        <span className="topbar-avatar">AY</span>
-      </div>
-    </header>
-  );
-}
+import { Bell, LogOut, Menu, Search } from "lucide-react"; import { logout } from "@/app/auth/actions";
+export function Topbar({ name, role, onMenu }: { name: string; role: string; onMenu: () => void }) { return <header className="topbar"><button className="menu-button" onClick={onMenu} aria-label="Open navigation"><Menu /></button><label className="global-search"><Search /><input placeholder="Search projects, people and documents" /></label><div className="topbar-right"><button className="notification" aria-label="Notifications"><Bell /></button><div className="user-chip"><span className="avatar">{name.slice(0, 2).toUpperCase()}</span><span><strong>{name}</strong><small>{role.replaceAll("_", " ")}</small></span></div><form action={logout}><button className="logout-button" title="Sign out"><LogOut /></button></form></div></header>; }
