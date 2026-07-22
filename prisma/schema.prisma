@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  OPERATOR
+  ANALYST
+  VIEWER
+}
+
+enum ShipmentStatus {
+  BOOKING
+  IN_TRANSIT
+  CUSTOMS
+  DELAYED
+  DELIVERED
+  CANCELLED
+}
+
+enum TransportMode {
+  SEA
+  AIR
+  ROAD
+  RAIL
+}
+
+enum DocumentStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  EXPIRED
+  REJECTED
+}
+
+enum InsightSeverity {
+  INFO
+  OPPORTUNITY
+  WARNING
+  CRITICAL
+}
+
+model Workspace {
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  plan      Plan       @default(GROWTH)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  users     User[]
+  customers Customer[]
+  shipments Shipment[]
+  documents Document[]
+  insights  Insight[]
+}
+
+model User {
+  id          String    @id @default(cuid())
+  name        String
+  email       String    @unique
+  role        UserRole  @default(OPERATOR)
+  avatarUrl   String?
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
+}
+
+model Customer {
+  id          String     @id @default(cuid())
+  name        String
+  code        String
+  country     String
+  contactName String?
+  contactEmail String?
+  healthScore Int        @default(80)
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  shipments   Shipment[]
+  documents   Document[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([workspaceId, code])
+  @@index([workspaceId])
+}
+
+model Shipment {
+  id            String         @id @default(cuid())
+  reference     String         @unique
+  cargo         String
+  origin        String
+  destination   String
+  status        ShipmentStatus @default(BOOKING)
+  mode          TransportMode
+  progress      Int            @default(0)
+  value         Float
+  co2Kg         Float          @default(0)
+  departureDate DateTime
+  eta           DateTime
+  customerId    String
+  customer      Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  workspaceId   String
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  events        ShipmentEvent[]
+  documents     Document[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([workspaceId, status])
+  @@index([customerId])
+}
+
+model ShipmentEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  location    String
+  occurredAt  DateTime
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([shipmentId, occurredAt])
+}
+
+model Document {
+  id          String         @id @default(cuid())
+  name        String
+  type        String
+  status      DocumentStatus @default(DRAFT)
+  expiresAt   DateTime?
+  storageKey  String?
+  customerId  String?
+  customer    Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  shipmentId  String?
+  shipment    Shipment?      @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  workspaceId String
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([workspaceId, status])
+}
+
+model Insight {
+  id          String          @id @default(cuid())
+  title       String
+  body        String
+  action      String?
+  severity    InsightSeverity @default(INFO)
+  confidence  Int             @default(80)
+  resolvedAt  DateTime?
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+
+  @@index([workspaceId, resolvedAt])
+}
