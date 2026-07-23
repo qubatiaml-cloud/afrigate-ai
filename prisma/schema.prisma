@@ -61,6 +61,18 @@ enum InvestorStatus {
   INACTIVE
 }
 
+enum InquiryType {
+  QUOTE
+  CONSULTATION
+}
+
+enum InquiryStatus {
+  NEW
+  IN_PROGRESS
+  CLOSED
+  SPAM
+}
+
 model Organization {
   id               String             @id @default(uuid()) @db.Uuid
   name             String
@@ -260,4 +272,29 @@ model AuditLog {
 
   @@index([organizationId, createdAt])
   @@index([resource, resourceId])
+}
+
+model PublicInquiry {
+  id            String        @id @default(uuid()) @db.Uuid
+  reference     String        @unique @db.VarChar(32)
+  type          InquiryType
+  status        InquiryStatus @default(NEW)
+  language      String        @default("ar") @db.VarChar(2)
+  sector        String
+  volume        String
+  fullName      String
+  email         String
+  phone         String?
+  company       String?
+  origin        String?
+  destination   String?
+  transportMode String?
+  message       String?
+  ipHash        String?
+  userAgent     String?
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(6)
+
+  @@index([status, createdAt])
+  @@index([email])
 }
