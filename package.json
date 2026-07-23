@@ -5,7 +5,7 @@
   "description": "Secure AI-assisted project and investment management platform",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/build.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
